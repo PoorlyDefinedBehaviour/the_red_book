@@ -1,4 +1,8 @@
 object Main extends App {
+  /**
+    * time O(n)
+    * space O(1)
+    */
   def tailRecursiveFactorial(n: Int): Int = {
     @annotation.tailrec
     def go(n: Int, acc: Int): Int = {
