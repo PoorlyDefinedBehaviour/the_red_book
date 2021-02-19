@@ -77,11 +77,54 @@ object List {
       case Cons(head, tail) => f(head, foldRight(tail, accum)(f))
     }
 
+  def foldLeft[A, B](xs: List[A], accum: B)(f: (A, B) => B): B =
+    xs match {
+      case Nil              => accum
+      case Cons(head, tail) => foldLeft(tail, f(head, accum))(f)
+    }
+
+  def foldLeft2[A, B](xs: List[A], accum: B)(f: (A, B) => B): B = {
+    @annotation.tailrec
+    def go(xs: List[A], accum: B): B = xs match {
+      case Nil              => accum
+      case Cons(head, tail) => go(tail, f(head, accum))
+    }
+
+    go(xs, accum)
+  }
+
+  def length[A](xs: List[A]): Int = {
+    @annotation.tailrec
+    def go(xs: List[A], len: Int): Int = xs match {
+      case Nil               => len
+      case Cons(_head, tail) => go(tail, len + 1)
+    }
+
+    go(xs, 0)
+  }
+
+  def length2[A](xs: List[A]): Int =
+    foldRight(xs, 0)((_, len) => len + 1)
+
+  def length3[A](xs: List[A]): Int =
+    foldLeft(xs, 0)((_, len) => len + 1)
+
+  def length4[A](xs: List[A]): Int = foldLeft2(xs, 0)((_, len) => len + 1)
+
   def sum2(ints: List[Int]): Int =
     foldRight(ints, 0)(_ + _)
 
+  def sum3(ints: List[Int]): Int =
+    foldLeft(ints, 0)(_ + _)
+
   def product2(doubles: List[Double]): Double =
     foldRight(doubles, 1.0)(_ * _)
+
+  def product3(doubles: List[Double]): Double =
+    foldLeft(doubles, 1.0)(_ * _)
+
+  def reverse[A](xs: List[A]): List[A] =
+    foldLeft(xs, Nil: List[A])((y, ys) => Cons(y, ys))
 
   def apply[A](xs: A*): List[A] = {
     if (xs.isEmpty) {
@@ -101,4 +144,25 @@ object Main extends App {
   println(List.tail(List(1, 2, 3)))
   println(List.product(List(1, 2, 3)))
   println(List.setHead(5, List(1, 2, 3)))
+  println(
+    List.length(List(1, 2, 3))
+  )
+  println(List.length(List()))
+  println(List.length(List(1)))
+  println(
+    List.length2(List(1, 2, 3))
+  )
+  println(List.length2(List()))
+  println(List.length2(List(1)))
+  println(
+    List.length3(List(1, 2, 3))
+  )
+  println(List.length3(List()))
+  println(List.length3(List(1)))
+  println(
+    List.length4(List(1, 2, 3))
+  )
+  println(List.length4(List()))
+  println(List.length4(List(1)))
+  println(List.reverse(List(1, 2, 3)))
 }
