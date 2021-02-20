@@ -133,6 +133,177 @@ object List {
       Cons(xs.head, apply(xs.tail: _*))
     }
   }
+
+  def flatten[A](list: List[List[A]]): List[A] = {
+    @annotation.tailrec
+    def go(list: List[List[A]], flatList: List[A]): List[A] =
+      list match {
+        case Nil              => flatList
+        case Cons(head, tail) => go(tail, List.append(flatList, head))
+      }
+
+    go(list, Nil)
+  }
+
+  def map[A, B](listOfA: List[A])(f: A => B): List[B] =
+    foldLeft2(listOfA, Nil: List[B])((x, listOfB) =>
+      List.append(listOfB, List(f(x)))
+    )
+
+  def inc(list: List[Int]): List[Int] = map(list)(_ + 1)
+
+  def doublesToString(list: List[Double]): List[String] =
+    map(list)(_.toString)
+
+  def filter[A](list: List[A])(predicate: A => Boolean): List[A] =
+    foldLeft(list, Nil: List[A])((x, filteredList) =>
+      if (predicate(x))
+        List.append(filteredList, List(x))
+      else
+        filteredList
+    )
+
+  def flatMap[A, B](listOfA: List[A])(f: A => List[B]): List[B] =
+    foldLeft2(listOfA, Nil: List[B])((x, listOfB) => List.append(listOfB, f(x)))
+
+  def filter2[A](list: List[A])(predicate: A => Boolean): List[A] =
+    flatMap(list)(x =>
+      if (predicate(x))
+        List(x)
+      else
+        Nil
+    )
+
+  def zipWith[A, B, C](listOfA: List[A], listOfB: List[B])(
+      f: (A, B) => C
+  ): List[C] = {
+    @annotation.tailrec
+    def go(listOfA: List[A], listOfB: List[B], listOfC: List[C]): List[C] =
+      (listOfA, listOfB) match {
+        case (Nil, _) | (_, Nil) => listOfC
+        case (Cons(headA, tailA), Cons(headB, tailB)) =>
+          go(tailA, tailB, List.append(listOfC, List(f(headA, headB))))
+      }
+
+    go(listOfA, listOfB, Nil: List[C])
+  }
+
+  def take[A](n: Int, list: List[A]): List[A] = {
+    @annotation.tailrec
+    def go(list: List[A], index: Int, xs: List[A]): List[A] =
+      list match {
+        case Nil             => xs
+        case _ if index == n => xs
+        case Cons(head, tail) =>
+          go(tail, index + 1, List.append(xs, List(head)))
+      }
+
+    go(list, 0, Nil: List[A])
+  }
+
+  def takeWhile[A](list: List[A])(predicate: A => Boolean): List[A] = {
+    @annotation.tailrec
+    def go(list: List[A], xs: List[A]): List[A] =
+      list match {
+        case Nil => xs
+        case Cons(head, tail) =>
+          if (predicate(head))
+            go(tail, List.append(xs, List(head)))
+          else
+            xs
+      }
+
+    go(list, Nil: List[A])
+  }
+
+  @annotation.tailrec
+  def forall[A](list: List[A])(predicate: A => Boolean): Boolean =
+    list match {
+      case Nil => true
+      case Cons(head, tail) =>
+        if (predicate(head))
+          forall(tail)(predicate)
+        else
+          false
+    }
+
+  @annotation.tailrec
+  def some[A](list: List[A])(predicate: A => Boolean): Boolean =
+    list match {
+      case Nil => false
+      case Cons(head, tail) =>
+        if (predicate(head))
+          true
+        else
+          some(tail)(predicate)
+    }
+
+  def scanLeft[A, B](listOfA: List[A], initialValue: B)(
+      f: (A, B) => B
+  ): List[B] = {
+    def reduceAndAppend(x: A, tuple: (B, List[B])): (B, List[B]) = {
+      val (reducedValue, listOfReducedValues) = tuple
+      val result = f(x, reducedValue)
+      (result, List.append(listOfReducedValues, List(result)))
+    }
+
+    val (_, reducedValues) =
+      foldLeft2(listOfA, (initialValue, Nil: List[B]))(reduceAndAppend)
+
+    reducedValues
+  }
+
+  def scanRight[A, B](listOfA: List[A], initialValue: B)(
+      f: (A, B) => B
+  ): List[B] = {
+    def reduceAndAppend(x: A, tuple: (B, List[B])): (B, List[B]) = {
+      val (reducedValue, listOfReducedValues) = tuple
+      val result = f(x, reducedValue)
+      (result, Cons(result, listOfReducedValues))
+    }
+
+    val (_, reducedValues) =
+      foldRight(listOfA, (initialValue, Nil: List[B]))(reduceAndAppend)
+
+    reducedValues
+  }
+
+  def isEmpty[A](list: List[A]): Boolean =
+    list match {
+      case Nil => true
+      case _   => false
+    }
+
+  def hasSubsequence[A](xs: List[A], ys: List[A]): Boolean = {
+    if (List.isEmpty(xs) || List.isEmpty(ys)) {
+      return false
+    }
+
+    def elementsMatch(xs: List[A], ys: List[A]): Boolean =
+      (xs, ys) match {
+        case (Nil, Nil)        => true
+        case (_, Nil)          => true
+        case (Nil, Cons(_, _)) => false
+        case (Cons(headX, tailX), Cons(headY, tailY)) =>
+          if (headX != headY)
+            false
+          else
+            elementsMatch(tailX, tailY)
+      }
+
+    @annotation.tailrec
+    def go(xs: List[A]): Boolean =
+      xs match {
+        case Nil => false
+        case Cons(head, tail) =>
+          if (head == List.head(ys) && elementsMatch(tail, List.tail(ys)))
+            true
+          else
+            go(tail)
+      }
+
+    go(xs)
+  }
 }
 
 object Main extends App {
@@ -165,4 +336,25 @@ object Main extends App {
   println(List.length4(List()))
   println(List.length4(List(1)))
   println(List.reverse(List(1, 2, 3)))
+  println(List.flatten(List(List(1, 2, 3))))
+  println(List.inc(List(1, 2, 3)))
+  println(List.doublesToString(List(1.0, 2.0, 3.0)))
+  println(List.map(List(1, 2, 3))(_ * 2))
+  println(List.filter(List(1, 2, 3, 4, 5))((x: Int) => (x & 1) == 0))
+  println(List.flatMap(List(1, 2, 3))(x => List(x, x)))
+  println(List.filter2(List(1, 2, 3, 4, 5))((x: Int) => (x & 1) == 0))
+  println(List.zipWith(List(1, 2, 3), List(4, 5, 6))(_ + _))
+  println(List.take(3, List(1, 2, 3, 4, 5)))
+  println(List.takeWhile(List(1, 2, 3, 4, 5))(_ != 3))
+  println(List.forall(List(1, 2, 3))(_ > 0))
+  println(List.forall(List(1, 2, 3))(_ < 0))
+  println(List.some(List(1, 2, 3))(_ == 3))
+  println(List.some(List(1, 2, 3))(_ == 4))
+  println(List.scanLeft(List(1, 2, 3), 0)(_ + _))
+  println(List.scanRight(List(1, 2, 3), 0)(_ + _))
+  println(List.hasSubsequence(List(1, 2, 3, 4, 5), List(1, 2, 3)))
+  println(List.hasSubsequence(List(1, 2, 3, 4, 5), List(5)))
+  println(List.hasSubsequence(List(1, 2, 3, 4, 5), List()))
+  println(List.hasSubsequence(List(1, 2, 3, 4, 5), List(2, 3)))
+  println(List.hasSubsequence(List(1, 2, 3, 4, 5), List(2, 4)))
 }
