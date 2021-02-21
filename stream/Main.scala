@@ -1,3 +1,4 @@
+import scala.collection.Stepper
 sealed trait Stream[+A] {
   def headOption: Option[A] =
     this match {
@@ -117,6 +118,80 @@ sealed trait Stream[+A] {
         case Cons(head, tail) => Some((f(head()), tail()))
       }
     )
+
+  def take2(n: Int): Stream[A] =
+    Stream.unfold((0, this))((values) => {
+      val (index, stream) = values
+
+      stream match {
+        case Empty            => None
+        case _ if index == n  => None
+        case Cons(head, tail) => Some((head(), (index + 1, tail())))
+      }
+    })
+
+  def takeWhile3(predicate: A => Boolean): Stream[A] =
+    Stream.unfold(this)((stream) =>
+      stream match {
+        case Empty => None
+        case Cons(head, tail) => {
+          val h = head()
+
+          if (predicate(h))
+            Some((h, tail()))
+          else
+            None
+        }
+
+      }
+    )
+
+  def zipAll[B](streamB: Stream[B]): Stream[(Option[A], Option[B])] =
+    Stream.unfold((this, streamB))((streams) =>
+      streams match {
+        case (Empty, Empty) => None
+        case (Cons(headA, tailA), Cons(headB, tailB)) =>
+          Some(((Some(headA()), Some(headB())), (tailA(), tailB())))
+        case (Cons(headA, tailA), Empty) =>
+          Some((Some(headA()), None), (tailA(), Empty))
+        case (Empty, Cons(headB, tailB)) =>
+          Some(((None, Some(headB())), (Empty, tailB())))
+      }
+    )
+
+  def startsWith[B >: A](stream: Stream[B]): Boolean = {
+    @annotation.tailrec
+    def go(xs: Stream[A], ys: Stream[B]): Boolean =
+      (xs, ys) match {
+        case (_, Empty) => true
+        case (Empty, _) => false
+        case (Cons(headA, tailA), Cons(headB, tailB)) =>
+          if (headA() == headB())
+            go(tailA(), tailB())
+          else
+            false
+      }
+
+    go(this, stream)
+  }
+
+  def tails: Stream[Stream[A]] =
+    Stream.unfold(this)((stream) =>
+      stream match {
+        case Empty            => None
+        case Cons(head, tail) => Some((Stream.cons(head(), tail()), tail()))
+      }
+    )
+
+  def hasSubsequence[B >: A](s: Stream[B]): Boolean =
+    tails exists (_ startsWith s)
+
+  def scanRight[B](initialValue: B)(f: (A, B) => B): Stream[B] =
+    foldRight((initialValue, Stream(initialValue)))((a, accumAndStream) => {
+      val (accum, stream) = accumAndStream
+      val b = f(a, accum)
+      (b, Stream.cons(b, stream))
+    })._2
 }
 
 case object Empty extends Stream[Nothing]
@@ -151,6 +226,18 @@ object Stream {
 
   def from2(n: Int): Stream[Int] =
     unfold(n)((x) => Some(x, x + 1))
+
+  def zipWith[A, B, C](streamA: Stream[A], streamB: Stream[B])(
+      f: => (A, B) => C
+  ): Stream[C] =
+    Stream.unfold((streamA, streamB))((streams) =>
+      streams match {
+        case (Empty, _) => None
+        case (_, Empty) => None
+        case (Cons(headA, tailA), Cons(headB, tailB)) =>
+          Some((f(headA(), headB()), (tailA(), tailB())))
+      }
+    )
 }
 
 object Main extends App {
@@ -193,4 +280,16 @@ object Main extends App {
   println(Stream.from2(10).take(5).toList)
   println(fibs2.take(10).toList)
   println(Stream(1, 2, 3).map2(_ * 2).toList)
+  println(Stream(1, 2, 3, 4, 5).take2(3).toList)
+  println(Stream(1, 2, 3, 4, 5).takeWhile3(_ < 3).toList)
+  println(Stream.zipWith(Stream(1, 2, 3), Stream(4, 5, 6))(_ + _).toList)
+  println(Stream(1, 2, 3).zipAll(Stream(4, 5)).toList)
+  println(Stream(1, 2, 3).startsWith(Stream(1, 2)))
+  println(Stream(1, 2, 3).startsWith(Stream()))
+  println(Stream(1, 2, 3).startsWith(Stream(1, 2, 3)))
+  println(Stream(1, 2, 3).startsWith(Stream(1, 2, 3, 4, 5)))
+  println(Stream(1, 2, 3).tails.map(_.toList).toList)
+  println(Stream(1, 2, 3, 4, 5).hasSubsequence(Stream(2, 3, 4)))
+  println(Stream(1, 2, 3, 4, 5).hasSubsequence(Stream(2, 3, 6)))
+  println(Stream(1, 2, 3).scanRight(0)(_ + _).toList)
 }
