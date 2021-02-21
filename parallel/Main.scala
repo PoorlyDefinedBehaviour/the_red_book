@@ -77,6 +77,11 @@ object Par {
       map(sequence(pars))(_.flatten)
     }
 
+  def equal[A](e: ExecutorService)(parA: Par[A], parB: Par[A]): Boolean =
+    parB(e).get == parB(e).get
+
+  def delay[A](fa: => Par[A]): Par[A] = (es: ExecutorService) => fa(es)
+
   def run[A](a: Par[A]): A = ???
 }
 
